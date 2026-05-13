@@ -1,0 +1,5 @@
+__pycache__/          # Python cache folder, not needed in Git
+*.pyc                 # Compiled Python files, not needed in Git
+.env                  # Environment variable file, may contain secrets
+.venv/                # Local Python virtual environment folder
+venv/                 # Another common virtual environment folder name
