@@ -2,29 +2,34 @@ name: CI Pipeline                         # Name of the workflow shown in GitHub
 
 on:                                       # Defines when this workflow will run
   push:                                   # Run workflow when code is pushed
-    branches:                             # Limit push trigger to selected branches
+    branches:                             # List of branches for push trigger
       - main                              # Run only when pushing to main branch
-  pull_request:                           # Also run workflow when a pull request is opened
-    branches:                             # Limit pull request trigger to selected branches
+  pull_request:                           # Run workflow when a pull request is opened
+    branches:                             # List of branches for pull request trigger
       - main                              # Run only for pull requests targeting main branch
 
 jobs:                                     # Jobs are groups of steps GitHub Actions will run
-  test:                                   # Job name; here we call it "test"
-    runs-on: ubuntu-latest                # GitHub will create a temporary Ubuntu Linux runner
+  test-and-build:                         # Job name; this job will test app and build Docker image
+    runs-on: ubuntu-latest                # GitHub creates a temporary Ubuntu Linux machine
 
-    steps:                                # Steps are commands inside the job
+    steps:                                # Steps are commands/actions inside the job
       - name: Checkout code               # Step name shown in GitHub Actions UI
-        uses: actions/checkout@v4         # GitHub Action that downloads your repo code into the runner
+        uses: actions/checkout@v4         # Downloads your GitHub repository code into the runner
 
       - name: Set up Python               # Step name shown in GitHub Actions UI
-        uses: actions/setup-python@v5     # GitHub Action that installs Python on the runner
-        with:                             # Extra settings for this action
-          python-version: "3.11"          # Python version we want to use
+        uses: actions/setup-python@v5     # Installs Python on the GitHub runner
+        with:                             # Extra settings for setup-python action
+          python-version: "3.11"          # Python version used by CI
 
       - name: Install dependencies        # Step name shown in GitHub Actions UI
-        run: |                            # Run multiple shell commands
+        run: |                            # Run multiple Linux shell commands
           python -m pip install --upgrade pip   # Upgrade pip package installer
-          pip install -r requirements.txt        # Install Flask, Gunicorn, Pytest from requirements.txt
+          pip install -r requirements.txt        # Install Flask, Gunicorn, Pytest
+
       - name: Run tests with pytest        # Step name shown in GitHub Actions UI
         run: |                            # Run shell commands
-          python -m pytest -v             # Run all pytest tests with detailed output
+          python -m pytest -v             # Run all tests with detailed output
+
+      - name: Build Docker image           # Step name shown in GitHub Actions UI
+        run: |                            # Run shell commands
+          docker build -t my-python-cicd-app:test .   # Build Docker image using Dockerfile in current folder
