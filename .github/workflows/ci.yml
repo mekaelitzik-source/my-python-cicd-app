@@ -25,7 +25,6 @@ jobs:                                     # Jobs are groups of steps GitHub Acti
         run: |                            # Run multiple shell commands
           python -m pip install --upgrade pip   # Upgrade pip package installer
           pip install -r requirements.txt        # Install Flask, Gunicorn, Pytest from requirements.txt
-
-      - name: Run basic Python check      # Step name shown in GitHub Actions UI
-        run: |                            # Run shell command
-          python -m compileall app.py     # Check that app.py has no Python syntax errors
+      - name: Run tests with pytest        # Step name shown in GitHub Actions UI
+        run: |                            # Run shell commands
+          python -m pytest -v             # Run all pytest tests with detailed output
