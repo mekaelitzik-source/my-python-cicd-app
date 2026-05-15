@@ -19,9 +19,11 @@ jobs:                                     # Jobs are separate groups of steps in
         uses: actions/checkout@v4         # Downloads your GitHub repository code into the runner
 
       - name: Set up Python               # Step name shown in GitHub Actions UI
-        uses: actions/setup-python@v5     # Installs Python on the runner
-        with:                             # Extra configuration for setup-python
+        uses: actions/setup-python@v5     # GitHub Action that installs Python on the runner
+        with:                             # Extra configuration for setup-python action
           python-version: "3.11"          # Python version used by the test job
+          cache: "pip"                    # Enable pip cache to speed up dependency installation
+          cache-dependency-path: requirements.txt   # Rebuild cache when requirements.txt changes
 
       - name: Install dependencies        # Step name shown in GitHub Actions UI
         run: |                            # Run multiple Linux shell commands
