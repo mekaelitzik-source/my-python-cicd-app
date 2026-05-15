@@ -22,7 +22,7 @@ jobs:                                     # Jobs are groups of steps GitHub Acti
           python-version: "3.11"          # Python version used by the pipeline
 
       - name: Install dependencies        # Step name shown in GitHub Actions UI
-        run: |                            # Run multiple shell commands
+        run: |                            # Run multiple Linux shell commands
           python -m pip install --upgrade pip   # Upgrade pip package installer
           pip install -r requirements.txt        # Install Flask, Gunicorn, and Pytest
 
@@ -36,10 +36,10 @@ jobs:                                     # Jobs are groups of steps GitHub Acti
           username: ${{ secrets.DOCKERHUB_USERNAME }}   # GitHub Secret containing Docker Hub username
           password: ${{ secrets.DOCKERHUB_TOKEN }}      # GitHub Secret containing Docker Hub token
 
-      - name: Build Docker image           # Step name shown in GitHub Actions UI
-        run: |                            # Run shell commands
-          docker build -t michaelitzik/my-python-cicd-app:v1 .   # Build image and tag it for Docker Hub
+      - name: Build Docker image with commit SHA                 # Step name shown in GitHub Actions UI
+        run: |                                                   # Run shell commands
+          docker build -t michaelitzik/my-python-cicd-app:${{ github.sha }} .   # Build image and tag it with Git commit SHA
 
-      - name: Push Docker image            # Step name shown in GitHub Actions UI
-        run: |                            # Run shell commands
-          docker push michaelitzik/my-python-cicd-app:v1         # Push image to Docker Hub
+      - name: Push Docker image with commit SHA                  # Step name shown in GitHub Actions UI
+        run: |                                                   # Run shell commands
+          docker push michaelitzik/my-python-cicd-app:${{ github.sha }}         # Push image with commit SHA tag to Docker Hub
