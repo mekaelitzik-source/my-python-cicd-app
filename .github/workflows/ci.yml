@@ -9,27 +9,37 @@ on:                                       # Defines when this workflow will run
       - main                              # Run only for pull requests targeting main branch
 
 jobs:                                     # Jobs are groups of steps GitHub Actions will run
-  test-and-build:                         # Job name; this job will test app and build Docker image
-    runs-on: ubuntu-latest                # GitHub creates a temporary Ubuntu Linux machine
+  test-build-push:                        # Job name; this job tests, builds, and pushes Docker image
+    runs-on: ubuntu-latest                # GitHub creates a temporary Ubuntu Linux runner
 
     steps:                                # Steps are commands/actions inside the job
       - name: Checkout code               # Step name shown in GitHub Actions UI
-        uses: actions/checkout@v4         # Downloads your GitHub repository code into the runner
+        uses: actions/checkout@v4         # Downloads your repository code into the runner
 
       - name: Set up Python               # Step name shown in GitHub Actions UI
-        uses: actions/setup-python@v5     # Installs Python on the GitHub runner
-        with:                             # Extra settings for setup-python action
-          python-version: "3.11"          # Python version used by CI
+        uses: actions/setup-python@v5     # Installs Python on the runner
+        with:                             # Extra settings for the setup-python action
+          python-version: "3.11"          # Python version used by the pipeline
 
       - name: Install dependencies        # Step name shown in GitHub Actions UI
-        run: |                            # Run multiple Linux shell commands
+        run: |                            # Run multiple shell commands
           python -m pip install --upgrade pip   # Upgrade pip package installer
-          pip install -r requirements.txt        # Install Flask, Gunicorn, Pytest
+          pip install -r requirements.txt        # Install Flask, Gunicorn, and Pytest
 
       - name: Run tests with pytest        # Step name shown in GitHub Actions UI
         run: |                            # Run shell commands
           python -m pytest -v             # Run all tests with detailed output
 
+      - name: Login to Docker Hub          # Step name shown in GitHub Actions UI
+        uses: docker/login-action@v3       # Official Docker action used to authenticate to Docker Hub
+        with:                             # Extra settings for Docker login action
+          username: ${{ secrets.DOCKERHUB_USERNAME }}   # GitHub Secret containing Docker Hub username
+          password: ${{ secrets.DOCKERHUB_TOKEN }}      # GitHub Secret containing Docker Hub token
+
       - name: Build Docker image           # Step name shown in GitHub Actions UI
         run: |                            # Run shell commands
-          docker build -t my-python-cicd-app:test .   # Build Docker image using Dockerfile in current folder
+          docker build -t michaelitzik/my-python-cicd-app:v1 .   # Build image and tag it for Docker Hub
+
+      - name: Push Docker image            # Step name shown in GitHub Actions UI
+        run: |                            # Run shell commands
+          docker push michaelitzik/my-python-cicd-app:v1         # Push image to Docker Hub
