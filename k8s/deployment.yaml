@@ -1,0 +1,42 @@
+apiVersion: apps/v1                    # Kubernetes API version for Deployment
+kind: Deployment                       # Resource type: Deployment
+metadata:                              # Metadata section for the Deployment
+  name: my-python-cicd-app             # Deployment name
+  namespace: cicd-app                  # Namespace where Deployment will be created
+  labels:                              # Labels attached to this Deployment
+    app: my-python-cicd-app            # Label used to identify this app
+
+spec:                                  # Desired state of the Deployment
+  replicas: 2                          # Run 2 Pods for high availability
+
+  selector:                            # Tells Deployment which Pods it manages
+    matchLabels:                       # Pod labels that must match
+      app: my-python-cicd-app          # Must match template.metadata.labels below
+
+  template:                            # Pod template used to create Pods
+    metadata:                          # Metadata for Pods created by this Deployment
+      labels:                          # Labels attached to each Pod
+        app: my-python-cicd-app        # Service will use this label to find Pods
+
+    spec:                              # Pod specification
+      containers:                      # List of containers inside the Pod
+        - name: my-python-cicd-app     # Container name
+          image: michaelitzik/my-python-cicd-app:latest   # Docker image pulled from Docker Hub
+          imagePullPolicy: Always      # Always pull latest image when Pod starts
+
+          ports:                       # Container ports
+            - containerPort: 5000      # Flask/Gunicorn listens on port 5000 inside container
+
+          readinessProbe:              # Checks if app is ready to receive traffic
+            httpGet:                   # HTTP check
+              path: /health            # Health endpoint in Flask app
+              port: 5000               # Container port to check
+            initialDelaySeconds: 5     # Wait 5 seconds before first readiness check
+            periodSeconds: 10          # Check every 10 seconds
+
+          livenessProbe:               # Checks if app is alive
+            httpGet:                   # HTTP check
+              path: /health            # Health endpoint in Flask app
+              port: 5000               # Container port to check
+            initialDelaySeconds: 10    # Wait 10 seconds before first liveness check
+            periodSeconds: 20          # Check every 20 seconds
