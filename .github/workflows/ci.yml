@@ -2,16 +2,16 @@ name: CI Pipeline                         # Name of the workflow shown in GitHub
 
 on:                                       # Defines when this workflow will run
   push:                                   # Run workflow when code is pushed
-    branches:                             # List of branches for push trigger
+    branches:                             # Branch filter for push trigger
       - main                              # Run only when pushing to main branch
 
   pull_request:                           # Run workflow when pull request is created/updated
-    branches:                             # List of branches for pull request trigger
-      - main                              # Run only for pull requests going to main branch
+    branches:                             # Branch filter for pull request trigger
+      - main                              # Run only for pull requests targeting main branch
 
 jobs:                                     # Jobs are separate stages in the pipeline
 
-  test:                                   # First job: test the Python Flask app
+  test:                                   # Job 1: test the Python Flask app
     runs-on: ubuntu-latest                # GitHub-hosted temporary Ubuntu runner
 
     steps:                                # Steps inside the test job
@@ -22,32 +22,32 @@ jobs:                                     # Jobs are separate stages in the pipe
         uses: actions/setup-python@v5     # Installs Python on the runner
         with:                             # Extra settings for setup-python action
           python-version: "3.11"          # Python version used for tests
-          cache: "pip"                    # Cache pip dependencies to speed up future runs
+          cache: "pip"                    # Cache pip dependencies to make future runs faster
           cache-dependency-path: requirements.txt   # Rebuild cache when requirements.txt changes
 
       - name: Install dependencies        # Step name shown in GitHub Actions UI
         run: |                            # Run multiple Linux shell commands
           python -m pip install --upgrade pip   # Upgrade pip package installer
-          pip install -r requirements.txt        # Install Flask, Gunicorn, and Pytest
+          pip install -r requirements.txt        # Install Flask, Gunicorn, Pytest
 
       - name: Run tests with pytest        # Step name shown in GitHub Actions UI
         run: |                            # Run shell command
           python -m pytest -v             # Run all tests with detailed output
 
 
-  docker-build-push:                      # Second job: build and push Docker image
+  docker-build-push:                      # Job 2: build and push Docker image
     runs-on: ubuntu-latest                # GitHub-hosted temporary Ubuntu runner
-    needs: test                           # This job runs only if test job succeeds
+    needs: test                           # Run only if the test job succeeds
 
-    steps:                                # Steps inside docker-build-push job
+    steps:                                # Steps inside Docker job
       - name: Checkout code               # Step name shown in GitHub Actions UI
-        uses: actions/checkout@v4         # Downloads repo code into this new runner
+        uses: actions/checkout@v4         # Downloads repo code into this runner
 
       - name: Login to Docker Hub          # Step name shown in GitHub Actions UI
-        uses: docker/login-action@v3       # Docker official action for docker login
+        uses: docker/login-action@v3       # Official Docker login action
         with:                             # Extra settings for Docker login action
           username: ${{ secrets.DOCKERHUB_USERNAME }}   # GitHub Secret with Docker Hub username
-          password: ${{ secrets.DOCKERHUB_TOKEN }}      # GitHub Secret with Docker Hub access token
+          password: ${{ secrets.DOCKERHUB_TOKEN }}      # GitHub Secret with Docker Hub token
 
       - name: Build Docker image with commit SHA and latest        # Step name shown in GitHub Actions UI
         run: |                                                     # Run shell command
@@ -62,26 +62,32 @@ jobs:                                     # Jobs are separate stages in the pipe
           docker push michaelitzik/my-python-cicd-app:latest       # Push latest tag to Docker Hub
 
 
-  deploy-local-k8s:                       # Third job: deploy app to local Kubernetes
+  deploy-local-k8s:                       # Job 3: deploy app to local Kubernetes
     runs-on: [self-hosted, Linux, X64, local-k8s]   # Use your local self-hosted runner with local-k8s label
-    needs: docker-build-push              # Deploy only after Docker image is built and pushed
+    needs: docker-build-push              # Run only if Docker build/push succeeds
 
-    steps:                                # Steps inside deploy-local-k8s job
+    steps:                                # Steps inside deploy job
       - name: Checkout code               # Step name shown in GitHub Actions UI
         uses: actions/checkout@v4         # Downloads repo code into the local self-hosted runner
 
       - name: Deploy to local Kubernetes  # Step name shown in GitHub Actions UI
         run: |                            # Run multiple Linux shell commands
-          kubectl apply -f k8s/namespace.yaml      # Create or update Kubernetes Namespace
-          kubectl apply -f k8s/deployment.yaml     # Create or update Kubernetes Deployment
-          kubectl apply -f k8s/service.yaml        # Create or update Kubernetes Service
+          kubectl apply -f k8s/namespace.yaml      # Create/update Kubernetes Namespace
+          kubectl apply -f k8s/deployment.yaml     # Create/update Kubernetes Deployment
+          kubectl apply -f k8s/service.yaml        # Create/update Kubernetes Service
 
-          kubectl set image deployment/my-python-cicd-app my-python-cicd-app=michaelitzik/my-python-cicd-app:${{ github.sha }} -n cicd-app   # Update Deployment to use exact image from this Git commit
+          kubectl set image deployment/my-python-cicd-app my-python-cicd-app=michaelitzik/my-python-cicd-app:${{ github.sha }} -n cicd-app   # Update Deployment to exact image from this Git commit
 
-          kubectl rollout status deployment/my-python-cicd-app -n cicd-app    # Wait until Deployment rollout is successful
+          kubectl rollout status deployment/my-python-cicd-app -n cicd-app    # Wait until Deployment rollout succeeds
 
-      - name: Verify deployment           # Step name shown in GitHub Actions UI
-        run: |                            # Run multiple Linux shell commands
-          kubectl get pods -n cicd-app    # Show Pods running in cicd-app namespace
-          kubectl get svc -n cicd-app     # Show Service running in cicd-app namespace
+      - name: Verify Kubernetes resources  # Step name shown in GitHub Actions UI
+        run: |                             # Run multiple Linux shell commands
+          kubectl get pods -n cicd-app     # Show Pods in cicd-app namespace
+          kubectl get svc -n cicd-app      # Show Service in cicd-app namespace
           kubectl get deployment my-python-cicd-app -n cicd-app -o wide   # Show Deployment and exact image tag
+
+      - name: Test application health after deployment          # Step name shown in GitHub Actions UI
+        run: |                                                  # Run multiple Linux shell commands
+          kubectl port-forward -n cicd-app svc/my-python-cicd-app-service 8082:80 > /tmp/port-forward.log 2>&1 &   # Forward runner port 8082 to Kubernetes Service port 80
+          sleep 5                                               # Wait for port-forward to become ready
+          curl --fail http://127.0.0.1:8082/health              # Test /health; fail job if app is not healthy
