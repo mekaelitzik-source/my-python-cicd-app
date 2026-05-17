@@ -61,26 +61,21 @@ jobs:                                     # Jobs are separate groups of steps in
         run: |                                                     # Run shell command
           docker push michaelitzik/my-python-cicd-app:latest       # Push latest image tag to Docker Hub
 
+      - name: Deploy to local Kubernetes
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
 
+          kubectl set image deployment/my-python-cicd-app \
+            my-python-cicd-app=michaelitzik/my-python-cicd-app:${{ github.sha }} \
+            -n cicd-app
 
-  deploy-local-k8s:                       # Third job; deploys app to local Kubernetes
-    runs-on: [self-hosted, Linux, X64, local-k8s]   # Run on your local self-hosted runner with local-k8s label
-    needs: docker-build-push              # Deploy only after Docker image is built and pushed
+          kubectl rollout status deployment/my-python-cicd-app -n cicd-app
+          kubectl get pods -n cicd-app
 
-    steps:                                # Steps inside the deploy job
-      - name: Checkout code               # Step name shown in GitHub Actions UI
-        uses: actions/checkout@v4         # Downloads repo code into the self-hosted runner
-
-      - name: Deploy to local Kubernetes  # Step name shown in GitHub Actions UI
-        run: |                            # Run Linux shell commands
-          kubectl apply -f k8s/namespace.yaml      # Create/update Namespace
-          kubectl apply -f k8s/deployment.yaml     # Create/update Deployment
-          kubectl apply -f k8s/service.yaml        # Create/update Service
-          kubectl rollout restart deployment/my-python-cicd-app -n cicd-app   # Restart Pods so latest image is pulled
-          kubectl rollout status deployment/my-python-cicd-app -n cicd-app    # Wait until deployment is healthy
-
-      - name: Verify deployment           # Step name shown in GitHub Actions UI
-        run: |                            # Run Linux shell commands
-          kubectl get pods -n cicd-app             # Show app Pods
-          kubectl get svc -n cicd-app              # Show app Service
-
+      - name: Verify deployment
+        run: |
+          kubectl get ns
+          kubectl get pods -n cicd-app
+          kubectl get svc -n cicd-app
